@@ -3,9 +3,11 @@
 
 import argparse
 import io
+import json
 import os
 import requests
-import json
+import shutil
+import subprocess
 
 import mutagen
 import mutagen.mp4
@@ -94,11 +96,7 @@ Telegram caption:\n{telegramCaption}
         if not force and os.path.exists(filename):
             log.info('File {!r} exists, skipping'.format(filename))
             return
-        try:
-            self.Download(filename)
-        except DownloadError:
-            log.exception('Download failed')
-            raise
+        self.Download(filename)
         self.Tag(filename)
         log.info('File {} was saved, meta was updated'.format(filename))
 
@@ -138,7 +136,7 @@ class SoundcloudDownloader(object):
             if playlistPermalink != playlist:
                 log.info('Skipping playlist {!r}'.format(playlistPermalink))
                 continue
-            log.info(u'Playlist "{}" ({}) of {} tracks'.format(playlistFields['title'], playlistPermalink, len(tracks)))
+            log.info(u'Playlist {!r} ({}) of {} tracks'.format(playlistFields['title'], playlistPermalink, len(tracks)))
             for track in tracks:
                 soundcloudTrack = SoundcloudTrack(self.SoundcloudClient, track['id'])
                 soundcloudTrack.SetEverything(
@@ -162,7 +160,7 @@ class SoundcloudDownloader(object):
 
     def Sets(self):
         return [
-            ('https://soundcloud.com/inliberty/sets/ya-mogu-govorit', None),
+            # ('https://soundcloud.com/inliberty/sets/ya-mogu-govorit', None),
             ('https://soundcloud.com/inliberty/sets/fj1fjsmauyke', 'public-lie'),
         ]
 
@@ -172,9 +170,29 @@ class YoutubeTrack(Track):
         self.AudioUrl = audioUrl
 
     def Download(self, filename):
-        # TODO: convert to mp3
         assert self.AudioFormat == 'mp4'
-        downloadUrl(self.AudioUrl, filename)
+        tmpFile = filename + '.tmp'
+        downloadUrl(self.AudioUrl, tmpFile)
+        # https://github.com/Top-Dog/Python-MP4-to-MP3-Converter/blob/master/Python-MP4-to-MP3-Converter/Python-MP4-to-MP3-Converter/main.py#L109
+        command = [
+            'ffmpeg',
+            '-loglevel', '0', # lower ffmeg's verbosity
+            '-i', tmpFile,
+            '-f', 'mp3',
+            '-b:a', '192000',
+            '-ar', '44100', # output will have 44100 Hz
+            '-ac', '2', # stereo (set to '1' for mono)
+            '-vn', # no video
+            '-y', # overwrite output
+            filename,
+        ]
+        result = subprocess.call(command)
+        if result != 0:
+            raise 'Convert to mp3 failed'
+        else:
+            os.remove(tmpFile)
+            self.AudioFormat = 'mp3'
+            log.info('Converted to mp3')
 
 
 class ShlosbergLive(object):
@@ -200,42 +218,42 @@ class ShlosbergLive(object):
             yield youtubeTrack
 
     def Urls(self):
-        log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos')
+        log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos chosen manually')
         return [
             ('https://www.youtube.com/watch?v=CuiADlYfjq0', '32'),
-            # ('https://www.youtube.com/watch?v=7pkAydybFCc', '31'),
-            # ('https://www.youtube.com/watch?v=ofL2yRqw9f0', '30-2'),
-            # ('https://www.youtube.com/watch?v=YVSGDJov7cw', '30-1'),
-            # ('https://www.youtube.com/watch?v=XXusqj6xygc', '29'),
-            # ('https://www.youtube.com/watch?v=QBsjBcqFev0', '28'),
-            # ('https://www.youtube.com/watch?v=YttJ60SY7sM', '27'),
-            # ('https://www.youtube.com/watch?v=JPxS1wIjUmc', '26'),
-            # ('https://www.youtube.com/watch?v=QYwTmlN0UdE', '25'),
-            # ('https://www.youtube.com/watch?v=jv_B1PXiQB8', '24'),
-            # ('https://www.youtube.com/watch?v=owBdz-X_SWQ', '23'),
-            # ('https://www.youtube.com/watch?v=HWd9l03xp1k', '22'),
-            # ('https://www.youtube.com/watch?v=ZhmZghs89wA', '21'),
-            # ('https://www.youtube.com/watch?v=72DIC22v1W4', '20'),
-            # ('https://www.youtube.com/watch?v=yXK-AZd2HAw', '19'),
-            # ('https://www.youtube.com/watch?v=fTyN66Sd9Fs', '18'),
-            # ('https://www.youtube.com/watch?v=wov7yvgTEok', '17'),
-            # ('https://www.youtube.com/watch?v=-h_KXVWVEJg', '16'),
-            # ('https://www.youtube.com/watch?v=xb0AsPuGvuc', '15'),
-            # ('https://www.youtube.com/watch?v=p2jOsznpVrk', '14'),
-            # ('https://www.youtube.com/watch?v=x5RDW-SXKA0', '13'),
-            # ('https://www.youtube.com/watch?v=pu_l_4FrRQI', '12'),
-            # ('https://www.youtube.com/watch?v=GxkhHqTKAlU', '11'),
-            # ('https://www.youtube.com/watch?v=Kf6AZOuj9dg', '10'),
-            # ('https://www.youtube.com/watch?v=23vjnCTlTjc', '9-2'),
-            # ('https://www.youtube.com/watch?v=i0-AI04ZYes', '9-1'),
-            # ('https://www.youtube.com/watch?v=jkN6Af4m9x8', '8'),
-            # ('https://www.youtube.com/watch?v=DivQCLyu_6s', '7'),
-            # ('https://www.youtube.com/watch?v=j7rL2jqhZnE', '6'),
-            # ('https://www.youtube.com/watch?v=fslL0Sjgz5U', '5'),
-            # ('https://www.youtube.com/watch?v=EP_ljk6sZvU', '4'),
-            # ('https://www.youtube.com/watch?v=jVj9L8KD3eA', '3'),
-            # ('https://www.youtube.com/watch?v=COhG3aHOs58', '2'),
-            # ('https://www.youtube.com/watch?v=X0mPF5HwaFs', '1'),
+            ('https://www.youtube.com/watch?v=7pkAydybFCc', '31'),
+            ('https://www.youtube.com/watch?v=ofL2yRqw9f0', '30-2'),
+            ('https://www.youtube.com/watch?v=YVSGDJov7cw', '30-1'),
+            ('https://www.youtube.com/watch?v=XXusqj6xygc', '29'),
+            ('https://www.youtube.com/watch?v=QBsjBcqFev0', '28'),
+            ('https://www.youtube.com/watch?v=YttJ60SY7sM', '27'),
+            ('https://www.youtube.com/watch?v=JPxS1wIjUmc', '26'),
+            ('https://www.youtube.com/watch?v=QYwTmlN0UdE', '25'),
+            ('https://www.youtube.com/watch?v=jv_B1PXiQB8', '24'),
+            ('https://www.youtube.com/watch?v=owBdz-X_SWQ', '23'),
+            ('https://www.youtube.com/watch?v=HWd9l03xp1k', '22'),
+            ('https://www.youtube.com/watch?v=ZhmZghs89wA', '21'),
+            ('https://www.youtube.com/watch?v=72DIC22v1W4', '20'),
+            ('https://www.youtube.com/watch?v=yXK-AZd2HAw', '19'),
+            ('https://www.youtube.com/watch?v=fTyN66Sd9Fs', '18'),
+            ('https://www.youtube.com/watch?v=wov7yvgTEok', '17'),
+            ('https://www.youtube.com/watch?v=-h_KXVWVEJg', '16'),
+            ('https://www.youtube.com/watch?v=xb0AsPuGvuc', '15'),
+            ('https://www.youtube.com/watch?v=p2jOsznpVrk', '14'),
+            ('https://www.youtube.com/watch?v=x5RDW-SXKA0', '13'),
+            ('https://www.youtube.com/watch?v=pu_l_4FrRQI', '12'),
+            ('https://www.youtube.com/watch?v=GxkhHqTKAlU', '11'),
+            ('https://www.youtube.com/watch?v=Kf6AZOuj9dg', '10'),
+            ('https://www.youtube.com/watch?v=23vjnCTlTjc', '9-2'),
+            ('https://www.youtube.com/watch?v=i0-AI04ZYes', '9-1'),
+            ('https://www.youtube.com/watch?v=jkN6Af4m9x8', '8'),
+            ('https://www.youtube.com/watch?v=DivQCLyu_6s', '7'),
+            ('https://www.youtube.com/watch?v=j7rL2jqhZnE', '6'),
+            ('https://www.youtube.com/watch?v=fslL0Sjgz5U', '5'),
+            ('https://www.youtube.com/watch?v=EP_ljk6sZvU', '4'),
+            ('https://www.youtube.com/watch?v=jVj9L8KD3eA', '3'),
+            ('https://www.youtube.com/watch?v=COhG3aHOs58', '2'),
+            ('https://www.youtube.com/watch?v=X0mPF5HwaFs', '1'),
         ]
 
 
@@ -259,13 +277,7 @@ def main(args):
         logMessage = track.LogMessage()
         log.info(logMessage)
         if args.save:
-            try:
-                track.Save(os.path.join(os.sep, *secrets['DownloadPath']))
-            except DownloadError:
-                pass
-            # else:
-            #     with io.open('log.txt', 'a+') as f:
-            #         f.write(logMessage)
+            track.Save(os.path.join(os.sep, *secrets['DownloadPath']), force=args.force)
         else:
             log.info('File wasn\'t saved')
 
@@ -276,6 +288,7 @@ def CreateArgumentsParser():
     parser.add_argument('--soundcloud', help='Download soundcloud', action='store_true')
     parser.add_argument('--shlosberg-live', help='Download Shlosberg Live', action='store_true')
     parser.add_argument('--save', help='Actually save files', action='store_true')
+    parser.add_argument('--force', help='Force save even for existing files', action='store_true')
     parser.add_argument('--secrets', help='File with custom settings', default='secrets.json')
     return parser
 
