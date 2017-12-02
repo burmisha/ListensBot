@@ -19,6 +19,7 @@ pip install six
 pip install eyeD3
 pip install mutagen
 pip install pafy
+pip install lxml
 deactivate
 
 # 4. Run script
