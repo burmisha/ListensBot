@@ -26,5 +26,10 @@ deactivate
 . ./venv/bin/activate
 export PAFY_BACKEND=internal # just to disable warning from pafy
 ./download.py --help
+./download.py \
+  --openuni \
+  --shlosberg-live \
+  --soundcloud \
+  --save
 deactivate
 ```
