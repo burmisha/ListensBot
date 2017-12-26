@@ -269,6 +269,7 @@ class ShlosbergLive(object):
     def Urls(self):
         log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos chosen manually')
         return [
+            ('https://www.youtube.com/watch?v=okfbGIXxlQE', '38', '0:19'),
             ('https://www.youtube.com/watch?v=HuKCihT4P64', '37', '0:26'),
             ('https://www.youtube.com/watch?v=zKi__hj_apc', '36', '0:37'),
             ('https://www.youtube.com/watch?v=0_h7w_JC6f4', '35', '0:09'),
