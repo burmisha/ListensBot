@@ -14,7 +14,8 @@ import mutagen.mp4
 import pafy # http://np1.github.io/pafy/
 import soundcloud
 from lxml.html import fromstring
-import pprint   
+import pprint
+import re
 
 
 import logging
@@ -213,12 +214,13 @@ class Mp4Track(Track):
         tmpFile = filename + '.tmp'
         downloadUrl(self.AudioUrl, tmpFile)
         # https://github.com/Top-Dog/Python-MP4-to-MP3-Converter/blob/master/Python-MP4-to-MP3-Converter/Python-MP4-to-MP3-Converter/main.py#L109
+        bitrate = '128000'
         command = [
             'ffmpeg',
             '-loglevel', '0', # lower ffmeg's verbosity
             '-i', tmpFile,
             '-f', 'mp3',
-            '-b:a', '192000',
+            '-b:a', bitrate,
             '-ar', '44100', # output will have 44100 Hz
             '-ac', '2', # stereo (set to '1' for mono)
             '-vn', # no video
@@ -233,7 +235,7 @@ class Mp4Track(Track):
         else:
             os.remove(tmpFile)
             self.AudioFormat = 'mp3'
-            log.info('Converted to mp3')
+            log.info('Converted to mp3, bitrate is {}'.format(bitrate))
 
 
 class Mp3Track(Track):
@@ -248,18 +250,26 @@ class ShlosbergLive(object):
     def __init__(self):
         pass
 
+    def ParseTitle(self, title, date, part):
+        title = u'Шлосберг Live #40, 9 января 2018 года. Тема: «Назад в СССР?»'
+        parts = [p for p in re.split('[«»]', title) if p]
+        assert len(parts) == 2
+        topic = u'Шлосберг Live #{}, Тема: «{}» ({})'.format(part, parts[1], date.replace('-', '/'))
+        return topic
+
     def __call__(self):
         for url, part, shift in self.Urls():
             video = pafy.new(url)
             audio = video.getbestaudio(preftype='m4a')
             title = video.title
             youtubeTrack = Mp4Track(audio.url, shift)
+            date = video.published[0:10]
             youtubeTrack.SetEverything(
-                title=video.title,
+                title=self.ParseTitle(video.title, date, part),
                 artist=video.author,
                 artistEng='grazhdanin-tv',
                 playlist='shlosberg-live',
-                created=video.published[0:10],
+                created=date,
                 permalink='shlosberg-live-{}'.format(part),
                 permalinkUrl=url,
                 audioFormat='mp4',
@@ -269,6 +279,8 @@ class ShlosbergLive(object):
     def Urls(self):
         log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos chosen manually')
         return [
+            ('https://www.youtube.com/watch?v=HK6Yc5az-gA', '40', '0:11'),
+            ('https://www.youtube.com/watch?v=d_rT1_fhwBY', '39', '0:11'),
             ('https://www.youtube.com/watch?v=okfbGIXxlQE', '38', '0:19'),
             ('https://www.youtube.com/watch?v=HuKCihT4P64', '37', '0:26'),
             ('https://www.youtube.com/watch?v=zKi__hj_apc', '36', '0:37'),
@@ -277,8 +289,8 @@ class ShlosbergLive(object):
             ('https://www.youtube.com/watch?v=cUgP2C7Y7mM', '33', '0:19'),
             ('https://www.youtube.com/watch?v=CuiADlYfjq0', '32', '1:52'),
             ('https://www.youtube.com/watch?v=7pkAydybFCc', '31', '0:10'),
-            ('https://www.youtube.com/watch?v=ofL2yRqw9f0', '30-2', None),
-            ('https://www.youtube.com/watch?v=YVSGDJov7cw', '30-1', '0:08'),
+            ('https://www.youtube.com/watch?v=ofL2yRqw9f0', '30.2', None),
+            ('https://www.youtube.com/watch?v=YVSGDJov7cw', '30.1', '0:08'),
             ('https://www.youtube.com/watch?v=XXusqj6xygc', '29', '1:02'),
             ('https://www.youtube.com/watch?v=QBsjBcqFev0', '28', '0:54'),
             ('https://www.youtube.com/watch?v=YttJ60SY7sM', '27', '0:50'),
@@ -299,8 +311,8 @@ class ShlosbergLive(object):
             ('https://www.youtube.com/watch?v=pu_l_4FrRQI', '12', '1:01'),
             ('https://www.youtube.com/watch?v=GxkhHqTKAlU', '11', '2:17'),
             ('https://www.youtube.com/watch?v=Kf6AZOuj9dg', '10', '0:45'),
-            ('https://www.youtube.com/watch?v=23vjnCTlTjc', '9-2', '0:15'),
-            ('https://www.youtube.com/watch?v=i0-AI04ZYes', '9-1', '0:59'),
+            ('https://www.youtube.com/watch?v=23vjnCTlTjc', '9.2', '0:15'),
+            ('https://www.youtube.com/watch?v=i0-AI04ZYes', '9.1', '0:59'),
             ('https://www.youtube.com/watch?v=jkN6Af4m9x8', '8', '0:15'),
             ('https://www.youtube.com/watch?v=DivQCLyu_6s', '7', '0:36'),
             ('https://www.youtube.com/watch?v=j7rL2jqhZnE', '6', '0:35'),
