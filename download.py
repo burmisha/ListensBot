@@ -8,10 +8,15 @@ import os
 import requests
 import shutil
 import subprocess
+import time
 
 import mutagen
 import mutagen.mp4
+
+# Supress pafy errors and override of logging settings
+os.environ['PAFY_BACKEND'] = 'internal'
 import pafy # http://np1.github.io/pafy/
+
 import soundcloud
 from lxml.html import fromstring
 import pprint
@@ -119,6 +124,7 @@ Telegram caption:\n{telegramCaption}
 
 
 def downloadUrl(url, filename):
+    log.debug('Downloading %r -> %r', url, filename)
     response = requests.get(url)
     statusCode = response.status_code
     if statusCode == 200:
@@ -251,15 +257,26 @@ class ShlosbergLive(object):
         pass
 
     def ParseTitle(self, title, date, part):
-        title = u'Шлосберг Live #40, 9 января 2018 года. Тема: «Назад в СССР?»'
-        parts = [p for p in re.split('[«»]', title) if p]
+        if u'«' in title:
+            parts = [p for p in re.split('[«»]', title) if p]
+        else:
+            parts = title.split('.', 1)
         assert len(parts) == 2
-        topic = u'Шлосберг Live #{}, Тема: «{}» ({})'.format(part, parts[1], date.replace('-', '/'))
+        topic = u'Шлосберг Live #{}, Тема: «{}» ({})'.format(part, parts[1].strip(), date.replace('-', '/'))
         return topic
 
     def __call__(self):
         for url, part, shift in self.Urls():
-            video = pafy.new(url)
+            ok = False
+            log.debug('Trying to fetch %r, %r, %r', url, part, shift)
+            while not ok:
+                try:
+                    video = pafy.new(url)
+                    ok = True
+                except IndexError:
+                    sleepTime = 1200
+                    log.info('Failed, sleeping for %d', sleepTime)
+                    time.sleep(sleepTime)
             audio = video.getbestaudio(preftype='m4a')
             title = video.title
             youtubeTrack = Mp4Track(audio.url, shift)
@@ -279,6 +296,10 @@ class ShlosbergLive(object):
     def Urls(self):
         log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos chosen manually')
         return [
+            ('https://www.youtube.com/watch?v=qo54lWAK1H0', '44', '0:20'),
+            ('https://www.youtube.com/watch?v=Ya20fvMFPqc', '43', '0:03'),
+            ('https://www.youtube.com/watch?v=bU-HBajBkYc', '42', '0:09'),
+            ('https://www.youtube.com/watch?v=vwyGAGulRoc', '41', '0:11'),
             ('https://www.youtube.com/watch?v=HK6Yc5az-gA', '40', '0:11'),
             ('https://www.youtube.com/watch?v=d_rT1_fhwBY', '39', '0:11'),
             ('https://www.youtube.com/watch?v=okfbGIXxlQE', '38', '0:19'),
@@ -404,6 +425,7 @@ class OpenUniversity(object):
 
 def getTracks(args, soundcloudToken=None):
     if args.soundcloud:
+        log.info('Getting soundcloud tracks')
         soundcloudDownloader = SoundcloudDownloader(soundcloudToken)
         for playlistUrl, playlistName, customPrefixDict in soundcloudDownloader.Sets():
             for track in soundcloudDownloader(
@@ -414,17 +436,20 @@ def getTracks(args, soundcloudToken=None):
                 yield track
 
     if args.shlosberg_live:
+        log.info('Getting Shlosberg tracks')
         shlosbergLive = ShlosbergLive()
         for track in shlosbergLive():
             yield track
 
     if args.openuni:
+        log.info('Getting OpenUni tracks')
         openUni = OpenUniversity()
         for track in openUni():
             yield track
 
 
 def main(args):
+    log.info('Main')
     with io.open(args.secrets) as f:
         secrets = json.load(f)
     saved, checked = 0, 0
@@ -435,7 +460,17 @@ def main(args):
         log.info(logMessage)
         checked += 1
         if args.save:
-            result = track.Save(downloadPath, force=args.force)
+            ok = False
+            while not ok:
+                try:
+                    result = track.Save(downloadPath, force=args.force)
+                    ok = True
+                except IndexError:
+                    sleepTime = 1200
+                    log.info('Failed, sleeping for %d', sleepTime)
+                    time.sleep(sleepTime)
+
+
             saved += int(result)
         else:
             log.info('File wasn\'t saved')
@@ -444,7 +479,7 @@ def main(args):
 
 def CreateArgumentsParser():
     parser = argparse.ArgumentParser('Download playlists', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--debug', help='Debug logging', action='store_true')
+    parser.add_argument('--debug', help='Enable debug logging', action='store_true')
     parser.add_argument('--soundcloud', help='Download soundcloud', action='store_true')
     parser.add_argument('--shlosberg-live', help='Download Shlosberg Live', action='store_true')
     parser.add_argument('--openuni', help='Download Open University', action='store_true')
@@ -457,8 +492,10 @@ def CreateArgumentsParser():
 if __name__ == '__main__':
     parser = CreateArgumentsParser()
     args = parser.parse_args()
-    logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s')
-    log.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='%(asctime)s %(name)s:%(lineno)d [%(levelname)s] %(message)s'
+    )
     log.info('Start')
     main(args)
     log.info('Finish')
