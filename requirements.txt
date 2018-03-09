@@ -1,0 +1,15 @@
+certifi==2018.1.18
+chardet==3.0.4
+eyeD3==0.8.4
+fudge==1.1.1
+idna==2.6
+lxml==4.1.1
+mutagen==1.40.0
+pafy==0.5.4
+pathlib==1.0.1
+python-magic==0.4.15
+requests==2.18.4
+simplejson==3.13.2
+six==1.11.0
+soundcloud==0.5.0
+urllib3==1.22

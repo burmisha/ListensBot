@@ -14,12 +14,13 @@ echo '{
 brew install ffmpeg
 virtualenv 'venv' # run once
 . ./venv/bin/activate
-pip install soundcloud
-pip install six
-pip install eyeD3
-pip install mutagen
-pip install pafy
-pip install lxml
+pip install -r requirements.txt
+# pip install soundcloud
+# pip install six
+# pip install eyeD3
+# pip install mutagen
+# pip install pafy
+# pip install lxml
 deactivate
 
 # 4. Run script
