@@ -313,6 +313,7 @@ class ShlosbergLive(object):
     def Urls(self):
         log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos chosen manually')
         return [
+            ('https://www.youtube.com/watch?v=F-8_lj4F-UA', '51', '0:13',   u'Кому нужна явка на выборы'),
             ('https://www.youtube.com/watch?v=OAxFXXYIPQE', '50', '0:23',   u'World of Tanks Владимира Путина'),
             ('https://www.youtube.com/watch?v=j_Fbry3k1kA', '49', '0:15',   u'Политический террор'),
             ('https://www.youtube.com/watch?v=4_eeEu52_6s', '48', '0:26',   u'На Сирийском фронте без перемен'),
