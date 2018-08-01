@@ -291,7 +291,7 @@ class ShlosbergLive(object):
                     ok = True
                 except IndexError:
                     sleepTime = 1200
-                    log.info('Failed, sleeping for %d', sleepTime)
+                    log.exception('Failed, sleeping for %d', sleepTime)
                     time.sleep(sleepTime)
             audio = video.getbestaudio(preftype='m4a')
             title = video.title
@@ -311,8 +311,32 @@ class ShlosbergLive(object):
             yield youtubeTrack
 
     def Urls(self):
-        log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos chosen manually')
+        log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos and https://www.youtube.com/playlist?list=PLjyGSeyIfIuJIeEapNE5U6nLD5ajcvXfF chosen manually')
         return [
+            ('https://www.youtube.com/watch?v=7GaZxT3dE2k', '75', '0:18',   u'Make love, not war'),
+            ('https://www.youtube.com/watch?v=cVDYkQ5ymkM', '74', '0:23',   u'Северо-Кавказские выборы 2018 в Псковской области'),
+            ('https://www.youtube.com/watch?v=FJbtsr7C4r0', '73', '0:20',   u'Цирк уехал, клоуны остались'),
+            ('https://www.youtube.com/watch?v=MA_npeqRs7I', '72', '0:17',   u'Выборы 2018. Что дальше?'),
+            ('https://www.youtube.com/watch?v=GKpw_-5873Y', '71', '0:36',   u'Протестовать нельзя смириться'),
+            ('https://www.youtube.com/watch?v=AayvSMtyTp8', '70', '0:12',   u'Воюющая Россия'),
+            ('https://www.youtube.com/watch?v=0E-VEvLNHec', '69', '0:16',   u'Не дожить до пенсии'),
+            ('https://www.youtube.com/watch?v=AywUrYQoXR0', '68', '1:06',   u'Муниципальный фильтр. Как это работает'),
+            ('https://www.youtube.com/watch?v=rdvbUQ4D7c8', '67', '0:26',   u'Гости: Виталий Аршинов, кандидат в губернаторы Псковской области'),
+            ('https://www.youtube.com/watch?v=lOHgqojPYXg', '66', '0:51',   u'Почему растут цены на бензин'),
+            ('https://www.youtube.com/watch?v=j3xisVhEEd4', '65', '0:16',   u'Гости: Владимир Вагин, социолог. Судьба Псковской области'),
+            ('https://www.youtube.com/watch?v=cwxIzifNKh4', '64', '0:19',   u'Чем монархия полезна для демократии'),
+            ('https://www.youtube.com/watch?v=9xJPN08ORkc', '63', '0:35',   u'Суд как Садизм-центр'),
+            ('https://www.youtube.com/watch?v=EUWD8jEBvXU', '62', '0:24',   u'Кадры не решают ничего'),
+            ('https://www.youtube.com/watch?v=zpCdKqjWTZE', '61', '0:13',   u'Гости: Андрей Зубов, российский историк'),
+            ('https://www.youtube.com/watch?v=aBDsvuTlTFI', '60', '0:31',   u'Выбор Армении и выбор России'),
+            ('https://www.youtube.com/watch?v=Jt4XI9pv9os', '59', '0:21',   u'Цифровое сопротивление'),
+            ('https://www.youtube.com/watch?v=rRhE6EcehzE', '58', '0:26',   u'Телеграмма Путину'),
+            ('https://www.youtube.com/watch?v=Ev3it_SDMi0', '57', '0:30',   u'Мусорный ветер'),
+            ('https://www.youtube.com/watch?v=FYYq5tJD-Lk', '56', '0:24',   u'Кемерово. Реакция'),
+            ('https://www.youtube.com/watch?v=DnI5YzaR2HA', '55', '0:21',   u'Кемерово. 25.03.2018. Почему?'),
+            ('https://www.youtube.com/watch?v=xnbBAUe2V90', '54', '0:21',   u'18.03.2018. Итоги'),
+            ('https://www.youtube.com/watch?v=sD05FkrqSyc', '53', '0:27',   u'Вам приказывают голосовать за Путина. Что делать?'),
+            ('https://www.youtube.com/watch?v=mBv5b2v4vPc', '52', '0:20',   u'Гости: Юлия Кантор, доктор исторических наук'),
             ('https://www.youtube.com/watch?v=F-8_lj4F-UA', '51', '0:13',   u'Кому нужна явка на выборы'),
             ('https://www.youtube.com/watch?v=OAxFXXYIPQE', '50', '0:23',   u'World of Tanks Владимира Путина'),
             ('https://www.youtube.com/watch?v=j_Fbry3k1kA', '49', '0:15',   u'Политический террор'),
@@ -376,6 +400,37 @@ def dumpJson(data, index=None):
         filename = 'tmp{}.json'.format(index)
     with io.open(filename, 'w', encoding='utf8') as jsonFile:
         jsonFile.write(json.dumps(data, indent=4, sort_keys=True, ensure_ascii=False))
+
+
+class Meduza(object):
+    def __init__(self):
+        pass
+
+    def __call__(self):
+        for url in [
+            'meduza-v-kurse',
+            'delo-sluchaya',
+            'tekst-nedeli',
+            'kak-zhit',
+        ]:
+            url = 'https://meduza.io/podcasts/{}'.format(url)
+            log.info('Reading podcasts from %r', url)
+            text = requests.get(url).text
+            for line in text.split(' '):
+                if '/audio/' in line:
+                    try:
+                        termsRe = '.*/audio/\d+/episodes/([\d/]+)/(.*)\.mp3\?client=native.*'
+                        audioRe = 'href="(.*)\?client=native.*'
+                        terms = re.search(termsRe, line)
+                        audio = re.search(audioRe, line)
+                        audioUrl = 'https://meduza.io{}'.format(audio.group(1))
+                        log.debug('%r', [audioUrl, terms.group(1), terms.group(2)])
+                    except:
+                        log.exception('Error on %r', line)
+                        raise
+
+        if False:
+            yield None
 
 
 class OpenUniversity(object):
@@ -471,6 +526,12 @@ def getTracks(args, soundcloudToken=None):
         for track in openUni():
             yield track
 
+    if args.meduza:
+        log.info('Getting Meduza')
+        meduza = Meduza()
+        for track in meduza():
+            yield track
+
 
 def main(args):
     log.info('Main')
@@ -491,9 +552,8 @@ def main(args):
                     ok = True
                 except IndexError:
                     sleepTime = 1200
-                    log.info('Failed, sleeping for %d', sleepTime)
+                    log.exception('Failed, sleeping for %d', sleepTime)
                     time.sleep(sleepTime)
-
 
             saved += int(result)
         else:
@@ -503,16 +563,17 @@ def main(args):
 
 def CreateArgumentsParser():
     parser = argparse.ArgumentParser('Download playlists', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--secrets', help='File with custom settings', default='secrets.json')
 
     saveGroup = parser.add_argument_group('Saving files arguments')
     saveGroup.add_argument('--save', help='Actually save files', action='store_true')
     saveGroup.add_argument('--force', help='Force save even for existing files', action='store_true')
 
     podcastsGroup = parser.add_argument_group('Podcasts arguments')
-    podcastsGroup.add_argument('--soundcloud', help='Download soundcloud', action='store_true')
-    podcastsGroup.add_argument('--shlosberg-live', help='Download Shlosberg Live', action='store_true')
-    podcastsGroup.add_argument('--openuni', help='Download Open University', action='store_true')
-    podcastsGroup.add_argument('--secrets', help='File with custom settings', default='secrets.json')
+    podcastsGroup.add_argument('--soundcloud', help='Soundcloud', action='store_true')
+    podcastsGroup.add_argument('--shlosberg-live', help='Shlosberg Live', action='store_true')
+    podcastsGroup.add_argument('--openuni', help='Open University', action='store_true')
+    podcastsGroup.add_argument('--meduza', help='Meduza', action='store_true')
 
     loggingGroup = parser.add_argument_group('Logging arguments')
     loggingGroup.add_argument('--log-format', help='Logging str', default='%(asctime)s %(name)15s:%(lineno)3d [%(levelname)s] %(message)s')
