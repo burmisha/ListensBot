@@ -13,7 +13,7 @@ import time
 import mutagen
 import mutagen.mp4
 
-# Supress pafy errors and override of logging settings
+# Supress pafy errors to prevent logging settings override
 os.environ['PAFY_BACKEND'] = 'internal'
 import pafy # http://np1.github.io/pafy/
 
@@ -24,7 +24,7 @@ import re
 
 
 import logging
-log = logging.getLogger(__file__)
+log = logging.getLogger('download')
 
 
 class DownloadError(Exception):
@@ -70,7 +70,7 @@ class Track(object):
                         prefix = '{}-'.format(value)
 
         basename = u'{prefix}{track.Created}-{track.Permalink}.mp3'.format(prefix=prefix, track=self).replace(':', u' —')
-        log.debug(u'Basename is {}'.format(basename))
+        log.debug('Basename is %r', basename)
         return os.path.join(self.ArtistEng, self.Playlist, basename)
 
     def TelegramCaption(self):
@@ -79,7 +79,7 @@ class Track(object):
             track=self,
             playlistName=self.Playlist.replace('-', '_'),
         )
-        log.debug(u'Telegram caption is {}'.format(telegramCaption))
+        log.debug('Telegram caption is %s', telegramCaption)
         return telegramCaption
 
     def LogMessage(self):
@@ -109,17 +109,17 @@ Telegram caption:\n{telegramCaption}
             audio['\xa9ART'] = self.Artist
             audio['\xa9nam'] = self.Title
         else:
-            raise RuntimeError('Invalid audio format: {!r}'.format(self.AudioFormat))
+            raise RuntimeError('Invalid audio format: %r' % self.AudioFormat)
         audio.save()
 
     def Save(self, dstDir, force=None):
         filename = os.path.join(dstDir, self.Filename())
         if not force and os.path.exists(filename):
-            log.info(u'File {} exists, skipping'.format(filename))
+            log.info('File %r exists, skipping', filename)
             return False
         self.Download(filename)
         self.Tag(filename)
-        log.info(u'File {} was saved, meta was updated'.format(filename))
+        log.info('File %r was saved, meta was updated', filename)
         return True
 
 
@@ -133,7 +133,7 @@ def downloadUrl(url, filename):
             f.write(response.content)
         log.debug('Content is ready')
     else:
-        raise DownloadError('Got invalid response: {}'.format(statusCode))
+        raise DownloadError('Got invalid response: %r' % statusCode)
 
 
 class SoundcloudTrack(Track):
@@ -291,7 +291,8 @@ class ShlosbergLive(object):
                     ok = True
                 except IndexError:
                     sleepTime = 1200
-                    log.exception('Failed, sleeping for %d', sleepTime)
+                    log.exception('Failed, traceback:')
+                    log.info('Sleeping for %d', sleepTime)
                     time.sleep(sleepTime)
             audio = video.getbestaudio(preftype='m4a')
             title = video.title
@@ -313,6 +314,12 @@ class ShlosbergLive(object):
     def Urls(self):
         log.info('Videos from https://www.youtube.com/user/PskovYablokoTV/videos and https://www.youtube.com/playlist?list=PLjyGSeyIfIuJIeEapNE5U6nLD5ajcvXfF chosen manually')
         return [
+            ('https://www.youtube.com/watch?v=x5xbgbjNics', '81', '0:37',   u'09.09. Итоги и перспективы'),
+            ('https://www.youtube.com/watch?v=P4lUCgcCAV4', '80', '0:20',   u'Как 9 сентября протестовать против пенсионной реформы?'),
+            ('https://www.youtube.com/watch?v=mALoPTPSoC8', '79', '0:15',   u'Что делать и как голосовать 9 сентября'),
+            ('https://www.youtube.com/watch?v=q24dmoMP5Qg', '78', '0:21',   u'Дефолт 1998 года. Можем повторить?'),
+            ('https://www.youtube.com/watch?v=yETzVtKoskw', '77', '0:42',   u'Кому нужны грязные выборы'),
+            ('https://www.youtube.com/watch?v=lFgJGjfx-E8', '76', '0:17',   u'Россия и Запад: будет оттепель?'),
             ('https://www.youtube.com/watch?v=7GaZxT3dE2k', '75', '0:18',   u'Make love, not war'),
             ('https://www.youtube.com/watch?v=cVDYkQ5ymkM', '74', '0:23',   u'Северо-Кавказские выборы 2018 в Псковской области'),
             ('https://www.youtube.com/watch?v=FJbtsr7C4r0', '73', '0:20',   u'Цирк уехал, клоуны остались'),
@@ -462,7 +469,7 @@ class OpenUniversity(object):
 
 
             if playlistName is None:
-                log.warn('Course {} is not supported'.format(courceId))
+                log.warn('Course %r is not supported', courceId)
                 continue
             else:
                 playlistName = '{}-{}'.format(courceId, playlistName)
@@ -502,35 +509,39 @@ class OpenUniversity(object):
                 yield track
 
 
-def getTracks(args, soundcloudToken=None):
-    if args.soundcloud:
-        log.info('Getting soundcloud tracks')
-        soundcloudDownloader = SoundcloudDownloader(soundcloudToken)
-        for playlistUrl, playlistName, customPrefixDict in soundcloudDownloader.Sets():
-            for track in soundcloudDownloader(
-                playlistUrl,
-                playlistName=playlistName,
-                customPrefixDict=customPrefixDict
-            ):
+class AllTracks(object):
+    def __init__(self, soundcloudToken=None):
+        self.SoundcloudToken = soundcloudToken
+
+    def __call__(self, args):
+        if args.soundcloud:
+            log.info('Getting soundcloud tracks')
+            soundcloudDownloader = SoundcloudDownloader(self.SoundcloudToken)
+            for playlistUrl, playlistName, customPrefixDict in soundcloudDownloader.Sets():
+                for track in soundcloudDownloader(
+                    playlistUrl,
+                    playlistName=playlistName,
+                    customPrefixDict=customPrefixDict
+                ):
+                    yield track
+
+        if args.shlosberg_live:
+            log.info('Getting Shlosberg tracks')
+            shlosbergLive = ShlosbergLive()
+            for track in shlosbergLive():
                 yield track
 
-    if args.shlosberg_live:
-        log.info('Getting Shlosberg tracks')
-        shlosbergLive = ShlosbergLive()
-        for track in shlosbergLive():
-            yield track
+        if args.openuni:
+            log.info('Getting OpenUni tracks')
+            openUni = OpenUniversity()
+            for track in openUni():
+                yield track
 
-    if args.openuni:
-        log.info('Getting OpenUni tracks')
-        openUni = OpenUniversity()
-        for track in openUni():
-            yield track
-
-    if args.meduza:
-        log.info('Getting Meduza')
-        meduza = Meduza()
-        for track in meduza():
-            yield track
+        if args.meduza:
+            log.info('Getting Meduza')
+            meduza = Meduza()
+            for track in meduza():
+                yield track
 
 
 def main(args):
@@ -539,26 +550,17 @@ def main(args):
         secrets = json.load(f)
     saved, checked = 0, 0
     downloadPath = os.path.join(os.sep, *secrets['DownloadPath'])
-    log.info('Saving files to {!r}'.format(downloadPath))
-    for track in getTracks(args, soundcloudToken=secrets['SoundcloudToken']):
+    log.info('Saving files to %r', downloadPath)
+    allTracks = AllTracks(soundcloudToken=secrets['SoundcloudToken'])
+    for track in allTracks(args):
         logMessage = track.LogMessage()
         log.info(logMessage)
         checked += 1
         if args.save:
-            ok = False
-            while not ok:
-                try:
-                    result = track.Save(downloadPath, force=args.force)
-                    ok = True
-                except IndexError:
-                    sleepTime = 1200
-                    log.exception('Failed, sleeping for %d', sleepTime)
-                    time.sleep(sleepTime)
-
-            saved += int(result)
+            saved += int(track.Save(downloadPath, force=args.force))
         else:
             log.info('File wasn\'t saved')
-    log.info('Checked {} files, saved {} of them'.format(checked, saved))
+    log.info('Checked %d files, saved %d of them', checked, saved)
 
 
 def CreateArgumentsParser():
@@ -576,7 +578,7 @@ def CreateArgumentsParser():
     podcastsGroup.add_argument('--meduza', help='Meduza', action='store_true')
 
     loggingGroup = parser.add_argument_group('Logging arguments')
-    loggingGroup.add_argument('--log-format', help='Logging str', default='%(asctime)s %(name)15s:%(lineno)3d [%(levelname)s] %(message)s')
+    loggingGroup.add_argument('--log-format', help='Logging str', default='%(asctime)s %(module)20s:%(lineno)-3d %(levelname)-8s %(message)s')
     loggingGroup.add_argument('--log-separator', help='Logging string separator', choices=['space', 'tab'], default='space')
     loggingGroup.add_argument('--verbose', help='Enable debug logging', action='store_true')
 
