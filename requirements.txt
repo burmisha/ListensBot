@@ -3,7 +3,7 @@ chardet==3.0.4
 eyeD3==0.8.4
 fudge==1.1.1
 idna==2.6
-lxml==4.1.1
+lxml==4.6.5
 mutagen==1.40.0
 pafy==0.5.4
 pathlib==1.0.1
