@@ -3,8 +3,10 @@
 
 import download
 
+
 import logging
 log = logging.getLogger(__file__)
+
 
 def test_ParseTitle():
     for title, canonicResult in [
@@ -184,9 +186,9 @@ def test_ParseTitle():
             log.info(u'Got:      %s', result)
             raise RuntimeError('Broken test')
 
+
 if __name__ == '__main__':
     logging.basicConfig(
-        # level=logging.DEBUG if args.debug else logging.INFO,
         level=logging.INFO,
         format='%(asctime)s %(name)s:%(lineno)d [%(levelname)s] %(message)s'
     )
